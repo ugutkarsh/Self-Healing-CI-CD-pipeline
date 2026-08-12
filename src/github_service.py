@@ -11,7 +11,7 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from github import Auth, Github, GithubException, InputGitTreeElement
+from github import Auth, Github, GithubException
 from github.GithubException import UnknownObjectException
 from github.PullRequest import PullRequest
 from github.Repository import Repository
@@ -117,47 +117,17 @@ class GitHubService:
 
         try:
             parent_commit = self._repo.get_git_commit(parent_sha)
-            base_tree = self._repo.get_git_tree(parent_sha, recursive=True)
         except GithubException as exc:
-            raise GitHubServiceError(f"Failed to load parent tree: {exc}") from exc
+            raise GitHubServiceError(f"Failed to load parent commit: {exc}") from exc
 
-        # Build a revert tree by restoring blobs from the parent at each changed path.
-        merge_tree = self._repo.get_git_tree(merge_commit.tree.sha, recursive=True)
-        parent_paths = {item.path: item for item in base_tree.tree if item.path}
-        merge_paths = {item.path: item for item in merge_tree.tree if item.path}
-
-        changed_paths = set(merge_paths) ^ set(parent_paths)
-        changed_paths.update(
-            p
-            for p in merge_paths
-            if p in parent_paths
-            and merge_paths[p].sha != parent_paths[p].sha
-        )
-
-        elements: list[InputGitTreeElement] = []
-        for path in sorted(changed_paths):
-            if path in parent_paths:
-                blob = parent_paths[path]
-                elements.append(
-                    InputGitTreeElement(
-                        path=path,
-                        mode=blob.mode,
-                        type=blob.type,
-                        sha=blob.sha,
-                    )
-                )
-            else:
-                # File added in merge — delete by setting sha to None.
-                elements.append(
-                    InputGitTreeElement(path=path, mode="100644", type="blob", sha=None)
-                )
-
+        # Reuse the pre-merge tree and attach the revert as a child of the merge
+        # commit (equivalent to `git revert -m 1`). Avoids manual tree diffs that
+        # trigger GitHub "Invalid tree info" errors on added/deleted paths.
         try:
-            new_tree = self._repo.create_git_tree(elements, base_tree)
             revert_commit = self._repo.create_git_commit(
                 message=f"Revert merge {merge_commit_sha}\n\nAuto-Heal CI rollback.",
-                tree=new_tree,
-                parents=[parent_commit],
+                tree=parent_commit.tree,
+                parents=[merge_commit],
             )
 
             self._upsert_branch_ref(branch_name, revert_commit.sha)
