@@ -62,12 +62,14 @@ jobs:
         id: tests
         continue-on-error: true
         run: |
-          set -o pipefail
+          set +e
           pytest tests/ -v --tb=short 2>&1 | tee test-output.log
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          test_exit=${PIPESTATUS[0]}
+          echo "exit_code=${test_exit}" >> "$GITHUB_OUTPUT"
+          exit "${test_exit}"
 
       - name: Snapshot environment on failure
-        if: steps.tests.outputs.exit_code != '0'
+        if: steps.tests.outcome == 'failure'
         run: |
           {
             echo "## Auto-Heal CI failure snapshot"
@@ -82,7 +84,7 @@ jobs:
           } > failure-context.md
 
       - name: Upload failure artifacts
-        if: steps.tests.outputs.exit_code != '0'
+        if: steps.tests.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: auto-heal-failure-artifacts
@@ -92,7 +94,7 @@ jobs:
             failure-context.md
 
       - name: Run Auto-Heal recovery engine
-        if: steps.tests.outputs.exit_code != '0'
+        if: steps.tests.outcome == 'failure'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -110,7 +112,7 @@ jobs:
         run: python -m src.main --log-file test-output.log --diff-file merge.diff
 
       - name: Fail job if tests failed
-        if: steps.tests.outputs.exit_code != '0'
+        if: steps.tests.outcome == 'failure'
         run: |
           echo "Post-merge tests failed. Auto-Heal CI opened a rollback PR and diagnostic issue."
           exit 1
