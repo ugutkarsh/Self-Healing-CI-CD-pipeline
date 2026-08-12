@@ -113,6 +113,26 @@ def _validate_secret(name: str, value: str, *, allow_mock: bool = False) -> None
         )
 
 
+def _require_env_any(*names: str) -> tuple[str, str]:
+    """
+    Return the first non-empty env var from `names`.
+
+    Returns:
+        Tuple of (env_var_name, value).
+
+    Raises:
+        EnvironmentError: When all names are missing or empty.
+    """
+    for name in names:
+        value = os.getenv(name, "").strip()
+        if value:
+            return name, value
+    joined = ", ".join(names)
+    raise EnvironmentError(
+        f"Required environment variable missing. Set one of: {joined}"
+    )
+
+
 def load_config(
     *,
     require_ai_key: bool = True,
@@ -140,6 +160,11 @@ def load_config(
         "OPENAI_API_KEY"
         if provider == AIProvider.OPENAI
         else "ANTHROPIC_API_KEY"
+    )
+    ai_key_fallbacks = (
+        (ai_key_var, "API_KEY")
+        if provider == AIProvider.OPENAI
+        else (ai_key_var,)
     )
 
     timeout_raw = _optional_env("AUTO_HEAL_AI_TIMEOUT_SECONDS", "60") or "60"
@@ -171,8 +196,8 @@ def load_config(
     )
 
     if require_ai_key:
-        api_key = _require_env(ai_key_var)
-        _validate_secret(ai_key_var, api_key)
+        key_name, api_key = _require_env_any(*ai_key_fallbacks)
+        _validate_secret(key_name, api_key)
     else:
         api_key = "mock-local-key"
 

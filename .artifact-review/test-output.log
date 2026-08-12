@@ -1,0 +1,31 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0 -- /opt/hostedtoolcache/Python/3.12.13/x64/bin/python
+cachedir: .pytest_cache
+rootdir: /home/runner/work/Self-Healing-CI-CD-pipeline/Self-Healing-CI-CD-pipeline
+plugins: anyio-4.14.2
+collecting ... collected 12 items
+
+tests/test_ai_analyzer.py::test_report_schema_validation PASSED          [  8%]
+tests/test_ai_analyzer.py::test_report_to_markdown PASSED                [ 16%]
+tests/test_ai_analyzer.py::test_diagnostic_engine_delegates_to_client PASSED [ 25%]
+tests/test_ai_analyzer.py::test_validation_error_wrapped PASSED          [ 33%]
+tests/test_diff_parser.py::test_extract_failures_pytest PASSED           [ 41%]
+tests/test_diff_parser.py::test_parse_changed_files PASSED               [ 50%]
+tests/test_diff_parser.py::test_filter_diff_by_files PASSED              [ 58%]
+tests/test_diff_parser.py::test_build_filtered_input_respects_budget PASSED [ 66%]
+tests/test_diff_parser.py::test_build_filtered_input_raises_on_empty PASSED [ 75%]
+tests/test_diff_parser.py::test_final_clip_truncated_flag_respects_extra PASSED [ 83%]
+tests/test_sample_app.py::test_addition_passes PASSED                    [ 91%]
+tests/test_sample_app.py::test_division_breaks_intentionally FAILED      [100%]
+
+=================================== FAILURES ===================================
+______________________ test_division_breaks_intentionally ______________________
+tests/test_sample_app.py:13: in test_division_breaks_intentionally
+    assert divide(10, 2) == 4  # intentional failure (expected 5.0)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   assert 5.0 == 4
+E    +  where 5.0 = divide(10, 2)
+=========================== short test summary info ============================
+FAILED tests/test_sample_app.py::test_division_breaks_intentionally - assert 5.0 == 4
+ +  where 5.0 = divide(10, 2)
+========================= 1 failed, 11 passed in 0.46s =========================

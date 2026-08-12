@@ -108,6 +108,7 @@ jobs:
           AUTO_HEAL_AI_PROVIDER: ${{ vars.AUTO_HEAL_AI_PROVIDER || 'openai' }}
           AUTO_HEAL_AI_MODEL: ${{ vars.AUTO_HEAL_AI_MODEL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          API_KEY: ${{ secrets.API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python -m src.main --log-file test-output.log --diff-file merge.diff
 

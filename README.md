@@ -44,6 +44,7 @@ flowchart TD
 |--------|----------|-------------|
 | `GITHUB_TOKEN` | Yes (auto) | Provided by Actions; needs `contents`, `pull-requests`, `issues` write |
 | `OPENAI_API_KEY` | If using OpenAI | API key for GPT models |
+| `API_KEY` | If using OpenAI | Alias for `OPENAI_API_KEY` (either name works) |
 | `ANTHROPIC_API_KEY` | If using Anthropic | API key for Claude models |
 
 ### 2. Repository variables (optional)
