@@ -59,6 +59,24 @@ class GitHubService:
     def repository(self) -> Repository:
         return self._repo
 
+    def _upsert_branch_ref(self, branch_name: str, sha: str) -> None:
+        """
+        Create or update a branch ref pointing at `sha`.
+
+        PyGithub's ``create_git_ref`` does not accept ``force``; if the branch
+        already exists from a prior Auto-Heal run, update it instead.
+        """
+        ref_path = f"refs/heads/{branch_name}"
+        try:
+            ref = self._repo.create_git_ref(ref=ref_path, sha=sha)
+            logger.info("Created revert branch %s @ %s", branch_name, ref.object.sha)
+        except GithubException as exc:
+            if exc.status != 422:
+                raise
+            existing = self._repo.get_git_ref(f"heads/{branch_name}")
+            existing.edit(sha=sha, force=True)
+            logger.info("Updated existing revert branch %s @ %s", branch_name, sha)
+
     def create_revert_branch_and_pr(
         self,
         *,
@@ -142,12 +160,7 @@ class GitHubService:
                 parents=[parent_commit],
             )
 
-            ref = self._repo.create_git_ref(
-                ref=f"refs/heads/{branch_name}",
-                sha=revert_commit.sha,
-                force=True,
-            )
-            logger.info("Created revert branch %s @ %s", branch_name, ref.object.sha)
+            self._upsert_branch_ref(branch_name, revert_commit.sha)
         except GithubException as exc:
             raise GitHubServiceError(f"Failed to create revert branch: {exc}") from exc
 
