@@ -4,7 +4,7 @@ from tests.sample_app import add, divide
 
 
 def test_addition_passes() -> None:
-    assert add(2, 3) == 4
+    assert add(2, 3) == 5
 
 
 def test_division_passes() -> None:
