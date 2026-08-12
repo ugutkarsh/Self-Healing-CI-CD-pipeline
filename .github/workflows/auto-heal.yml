@@ -1,0 +1,116 @@
+name: Auto-Heal CI
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  verify-and-heal:
+    # Only run verification when a PR was merged to main, or on direct pushes.
+    if: |
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true) ||
+      github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Capture merge context
+        id: context
+        run: |
+          echo "commit_sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+            echo "pr_author=${{ github.event.pull_request.user.login }}" >> "$GITHUB_OUTPUT"
+            echo "pr_title<<EOF" >> "$GITHUB_OUTPUT"
+            echo "${{ github.event.pull_request.title }}" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            echo "pr_url=${{ github.event.pull_request.html_url }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate merge diff artifact
+        run: |
+          if [ -n "${{ steps.context.outputs.pr_number }}" ]; then
+            git diff "${{ github.event.pull_request.base.sha }}".."${{ github.sha }}" > merge.diff
+          else
+            git diff HEAD~1..HEAD > merge.diff || true
+          fi
+
+      - name: Run test suite
+        id: tests
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pytest tests/ -v --tb=short 2>&1 | tee test-output.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Snapshot environment on failure
+        if: steps.tests.outputs.exit_code != '0'
+        run: |
+          {
+            echo "## Auto-Heal CI failure snapshot"
+            echo "commit: ${{ github.sha }}"
+            echo "actor: ${{ github.actor }}"
+            echo "run_id: ${{ github.run_id }}"
+            echo "pr_number: ${{ steps.context.outputs.pr_number }}"
+            echo "pr_author: ${{ steps.context.outputs.pr_author }}"
+            echo ""
+            echo "### Environment (non-secret)"
+            env | sort
+          } > failure-context.md
+
+      - name: Upload failure artifacts
+        if: steps.tests.outputs.exit_code != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto-heal-failure-artifacts
+          path: |
+            test-output.log
+            merge.diff
+            failure-context.md
+
+      - name: Run Auto-Heal recovery engine
+        if: steps.tests.outputs.exit_code != '0'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          AUTO_HEAL_PR_NUMBER: ${{ steps.context.outputs.pr_number }}
+          AUTO_HEAL_PR_AUTHOR: ${{ steps.context.outputs.pr_author }}
+          AUTO_HEAL_PR_TITLE: ${{ steps.context.outputs.pr_title }}
+          AUTO_HEAL_PR_URL: ${{ steps.context.outputs.pr_url }}
+          AUTO_HEAL_AI_PROVIDER: ${{ vars.AUTO_HEAL_AI_PROVIDER || 'openai' }}
+          AUTO_HEAL_AI_MODEL: ${{ vars.AUTO_HEAL_AI_MODEL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m src.main --log-file test-output.log --diff-file merge.diff
+
+      - name: Fail job if tests failed
+        if: steps.tests.outputs.exit_code != '0'
+        run: |
+          echo "Post-merge tests failed. Auto-Heal CI opened a rollback PR and diagnostic issue."
+          exit 1

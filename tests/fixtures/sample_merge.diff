@@ -1,0 +1,19 @@
+diff --git a/tests/sample_app.py b/tests/sample_app.py
+index abc123..def456 100644
+--- a/tests/sample_app.py
++++ b/tests/sample_app.py
+@@ -8,4 +8,4 @@ def add(a: int, b: int) -> int:
+ 
+ def divide(numerator: int, denominator: int) -> float:
+-    return numerator // denominator
++    return numerator / denominator
+diff --git a/tests/test_sample_app.py b/tests/test_sample_app.py
+index 111..222 100644
+--- a/tests/test_sample_app.py
++++ b/tests/test_sample_app.py
+@@ -8,4 +8,4 @@ def test_addition_passes() -> None:
+ def test_division_breaks_intentionally() -> None:
+     """This test fails to demonstrate Auto-Heal CI rollback flow."""
+     # Bug: integer division expected but float returned.
+-    assert divide(10, 2) == 5
++    assert divide(10, 2) == 4  # intentional failure (expected 5.0)

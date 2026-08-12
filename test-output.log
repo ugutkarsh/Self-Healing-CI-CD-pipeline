@@ -1,0 +1,29 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/anaconda3/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/utkarsh/Self-Healing CI:CD pipeline
+plugins: anyio-4.10.0
+collecting ... collected 11 items
+
+tests/test_ai_analyzer.py::test_report_schema_validation PASSED          [  9%]
+tests/test_ai_analyzer.py::test_report_to_markdown PASSED                [ 18%]
+tests/test_ai_analyzer.py::test_diagnostic_engine_delegates_to_client PASSED [ 27%]
+tests/test_ai_analyzer.py::test_validation_error_wrapped PASSED          [ 36%]
+tests/test_diff_parser.py::test_extract_failures_pytest PASSED           [ 45%]
+tests/test_diff_parser.py::test_parse_changed_files PASSED               [ 54%]
+tests/test_diff_parser.py::test_filter_diff_by_files PASSED              [ 63%]
+tests/test_diff_parser.py::test_build_filtered_input_respects_budget PASSED [ 72%]
+tests/test_diff_parser.py::test_build_filtered_input_raises_on_empty PASSED [ 81%]
+tests/test_sample_app.py::test_addition_passes PASSED                    [ 90%]
+tests/test_sample_app.py::test_division_breaks_intentionally FAILED      [100%]
+
+=================================== FAILURES ===================================
+______________________ test_division_breaks_intentionally ______________________
+tests/test_sample_app.py:13: in test_division_breaks_intentionally
+    assert divide(10, 2) == 4  # intentional failure (expected 5.0)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   assert 5.0 == 4
+E    +  where 5.0 = divide(10, 2)
+=========================== short test summary info ============================
+FAILED tests/test_sample_app.py::test_division_breaks_intentionally - assert ...
+========================= 1 failed, 10 passed in 0.15s =========================

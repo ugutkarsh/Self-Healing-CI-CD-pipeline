@@ -1,0 +1,12 @@
+# Auto-Heal CI — Python dependencies
+# Pin major versions for reproducible CI runs.
+
+pydantic>=2.7,<3
+openai>=1.40,<2
+anthropic>=0.34,<1
+PyGithub>=2.3,<3
+httpx>=0.27,<1
+python-dotenv>=1.0,<2
+
+# Test runner (sample suite)
+pytest>=8.2,<9
