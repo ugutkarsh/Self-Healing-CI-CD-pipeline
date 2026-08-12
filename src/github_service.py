@@ -231,13 +231,18 @@ class GitHubService:
 
         body = "\n".join(body_parts)
 
+        issue_kwargs: dict = {
+            "title": title,
+            "body": body,
+            "labels": labels,
+        }
+        resolved_assignee = assignee or run.pr_author
+        # PyGithub rejects assignee=None explicitly (common on direct pushes to main).
+        if resolved_assignee:
+            issue_kwargs["assignee"] = resolved_assignee
+
         try:
-            issue = self._repo.create_issue(
-                title=title,
-                body=body,
-                labels=labels,
-                assignee=assignee or run.pr_author,
-            )
+            issue = self._repo.create_issue(**issue_kwargs)
         except GithubException as exc:
             raise GitHubServiceError(f"Failed to create diagnostic issue: {exc}") from exc
 
