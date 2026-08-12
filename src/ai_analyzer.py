@@ -15,7 +15,8 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Optional, Protocol
+from copy import deepcopy
+from typing import Any, Optional, Protocol
 
 import httpx
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -100,8 +101,40 @@ class AIAnalyzerProviderError(AIAnalyzerError):
     """Raised for non-retryable provider/API failures."""
 
 
+def _prepare_strict_json_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    """
+    Normalize a Pydantic JSON schema for OpenAI strict structured outputs.
+
+    OpenAI requires every object node to declare ``additionalProperties: false``
+    and to list every property key inside ``required``.
+    """
+    prepared = deepcopy(schema)
+
+    def _patch(node: dict[str, Any]) -> None:
+        if "properties" in node:
+            node["type"] = node.get("type", "object")
+            node["additionalProperties"] = False
+            node["required"] = list(node["properties"].keys())
+
+        for value in node.values():
+            if isinstance(value, dict):
+                _patch(value)
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict):
+                        _patch(item)
+
+    for def_schema in prepared.get("$defs", {}).values():
+        if isinstance(def_schema, dict):
+            _patch(def_schema)
+    _patch(prepared)
+    return prepared
+
+
 # JSON Schema exported for providers that accept explicit schemas.
-DIAGNOSTIC_JSON_SCHEMA: dict = DiagnosticReport.model_json_schema()
+DIAGNOSTIC_JSON_SCHEMA: dict[str, Any] = _prepare_strict_json_schema(
+    DiagnosticReport.model_json_schema()
+)
 
 
 SYSTEM_PROMPT = """You are a principal engineer performing post-merge CI failure analysis.

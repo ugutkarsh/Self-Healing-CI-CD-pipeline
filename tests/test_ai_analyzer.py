@@ -92,3 +92,13 @@ def test_validation_error_wrapped(sample_payload: FilteredDiagnosticInput) -> No
 
     with pytest.raises(AIAnalyzerValidationError):
         engine.analyze(sample_payload)
+
+
+def test_openai_schema_has_additional_properties_false() -> None:
+    from src.ai_analyzer import DIAGNOSTIC_JSON_SCHEMA
+
+    assert DIAGNOSTIC_JSON_SCHEMA["additionalProperties"] is False
+    assert "failing_files" in DIAGNOSTIC_JSON_SCHEMA["required"]
+    failing_file = DIAGNOSTIC_JSON_SCHEMA["$defs"]["FailingFile"]
+    assert failing_file["additionalProperties"] is False
+    assert set(failing_file["required"]) == set(failing_file["properties"].keys())
