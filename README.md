@@ -1,4 +1,5 @@
 # Auto-Heal CI
+Dev - Utkarsh Ajay Gawande
 
 Enterprise-ready, open-source GitHub Action system that verifies PR merges on `main`, safely isolates breaking changes via automated **Rollback PRs**, and posts structured **AI-powered diagnostic reports**.
 
